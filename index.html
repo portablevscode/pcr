@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Private Chat Room</title>
+<style>
+:root{--bg:#05070a;--p:#0a0e13;--p2:#0e131a;--t:#d7dde5;--m:#687586;--g:#67e480;--c:#58d5ff;--y:#f3d36b;--r:#ff6b7a;--pm:#c792ea;--b:#202833;--f:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace}
+*{box-sizing:border-box}
+html,body{width:100%;margin:0;background:var(--bg);color:var(--t);font-family:var(--f);overflow-x:hidden}
+html,body{height:100vh}
+@supports (height:100dvh){html,body{height:100dvh}}
+body{display:grid;place-items:center;padding:20px;overflow:hidden}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+
+.app{width:min(1120px,96vw);height:min(720px,90dvh);min-height:360px;background:var(--p);border:1px solid var(--b);border-radius:13px;box-shadow:0 28px 80px #000b;overflow:hidden;display:flex;flex-direction:column;max-width:100%}
+.bar{height:43px;flex:0 0 43px;background:linear-gradient(#151a21,#10151b);border-bottom:1px solid var(--b);display:flex;align-items:center;padding:0 14px;position:relative}
+.dots{display:flex;gap:8px}.dot{width:12px;height:12px;border:0;border-radius:50%;padding:0}.red{background:#ff5f57}.yellow{background:#febc2e}.green{background:#28c840}
+.title{position:absolute;left:50%;transform:translateX(-50%);font-size:12px;color:#8c96a3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:50%}
+.actions{margin-left:auto;display:flex;align-items:center;gap:10px}
+.clock{color:#8c96a3;font-size:11px;letter-spacing:.06em;user-select:none;font-variant-numeric:tabular-nums}
+.btnlink{border:0;background:transparent;color:var(--m);font:11px var(--f);cursor:pointer}
+.btnlink:hover{color:var(--c)}
+
+.work{display:flex;flex:1;min-height:0}
+.side{background:#080c11;padding:13px 9px;overflow:auto;width:180px;flex:0 0 180px}
+.right{border-left:1px solid var(--b);width:175px;flex-basis:175px}
+.st{font-size:10px;color:#596574;letter-spacing:.12em;padding:4px 8px 9px}
+.room{display:flex;gap:7px;align-items:center;color:var(--g);padding:7px 9px;font-size:12px}
+.small{font-size:10px;color:var(--m);line-height:1.65;padding:5px 8px;word-break:break-word}
+.u{padding:5px 8px;color:#7e8997;font-size:11px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.u.me{color:var(--g)}
+.u .tag{font-size:9px;padding:1px 4px;border-radius:3px;border:1px solid #2b3542}
+.u .tag.on{color:var(--g);border-color:#1f4a2b}
+.u .tag.connecting{color:var(--y);border-color:#4a4326}
+.u .tag.off{color:var(--m);border-color:#2b3542}
+
+.main{display:flex;flex:1;min-width:0;min-height:0;flex-direction:column}
+.chat{flex:1;overflow:auto;padding:17px 20px 10px;line-height:1.5;background:radial-gradient(circle at 80% 0%,#14202a55,transparent 34%),linear-gradient(180deg,#0b0f14,#080b0f)}
+.sys{color:var(--m);font-size:12px;text-align:center;margin:6px 0}
+.err{color:var(--r);font-size:12px;text-align:center;margin:6px 0}
+
+.msg.bubble-row{display:flex;margin:5px 0}
+.msg.bubble-row.self{justify-content:flex-end}
+.bubble{max-width:78%;background:#121821;border:1px solid #202833;border-radius:13px;padding:7px 11px 6px;min-width:0}
+.msg.bubble-row.self .bubble{background:#132116;border-color:#26402c}
+.bhead{display:flex;align-items:center;gap:5px;margin-bottom:2px}
+.bnick{font-size:11.5px;color:var(--c);font-weight:500}
+.msg.bubble-row.self .bnick{color:var(--g)}
+.btext{font-size:13px;line-height:1.45;word-break:break-word;white-space:pre-wrap}
+.bfoot{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:2px}
+.btime{font-size:9px;color:#576273}
+.react-btn{border:0;background:transparent;color:#576273;font-size:10px;cursor:pointer;padding:1px 4px;border-radius:3px}
+.react-btn:hover{color:var(--c)}
+.picker{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;max-width:220px}
+.picker.hidden{display:none}
+.emoji-opt{border:1px solid #232d38;background:#0d131a;border-radius:6px;padding:2px 6px;font-size:14px;cursor:pointer}
+.emoji-opt:hover{border-color:#3f5262}
+.reactions{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.reaction{display:inline-flex;align-items:center;gap:3px;font-size:11px;background:#0d131a;border:1px solid #232d38;border-radius:10px;padding:1px 7px;cursor:pointer;color:#c7cfd8}
+.reaction.mine{border-color:#345b3d;background:#102116;color:var(--g)}
+.replyq{font-size:11px;color:#6b7684;border-left:2px solid #2b3542;padding:1px 8px;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.replyq b{color:#7fa3b8;font-weight:500}
+
+.att-img{max-width:220px;max-height:220px;border-radius:8px;display:block;margin-top:2px;border:1px solid var(--b)}
+.att-file{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--b);border-radius:6px;color:var(--c);text-decoration:none;font-size:12px}
+.xfer{display:flex;flex-direction:column;gap:4px;min-width:170px}
+.xferstate{font-size:12px;color:#a4afbc}
+.xferbar{height:5px;border-radius:3px;background:#1a222c;overflow:hidden}
+.xferbarfill{height:100%;background:linear-gradient(90deg,#3a6a46,#67e480);border-radius:3px;transition:width .2s ease}
+
+.typingline{padding:0 20px;font-size:11px;color:var(--m);min-height:16px;line-height:16px;font-style:italic}
+.compose{border-top:1px solid var(--b);background:#090d12;padding:10px 13px;display:flex;flex-direction:column;gap:7px}
+.composerow{display:flex;align-items:center;gap:9px}
+.replybar{display:flex;align-items:center;gap:8px;background:#0d131a;border:1px solid var(--b);border-left:2px solid var(--c);border-radius:5px;padding:6px 9px;font-size:11px}
+.replybar.hidden{display:none}
+.replybar-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#9aa5b1}
+.replybar-text b{color:var(--c);font-weight:500}
+.replybar-cancel{border:0;background:transparent;color:var(--m);cursor:pointer;font-size:13px;padding:2px 6px;border-radius:3px}
+.prompt{color:var(--g);font-size:13px;white-space:nowrap}
+#input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--t);font:13px var(--f);caret-color:var(--g)}
+#input::placeholder{color:#46515e}
+.send,.action{border:1px solid #31563b;background:#102116;color:var(--g);border-radius:5px;padding:7px 10px;cursor:pointer;font:11px var(--f)}
+.secondary{border-color:#303b48;background:#10161e;color:#a4afbc}
+
+.status{height:27px;flex:0 0 27px;background:#080b0f;border-top:1px solid #1c232c;color:#596574;font-size:10px;padding:5px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px;padding-bottom:max(5px,env(safe-area-inset-bottom))}
+.status>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ok{color:var(--g)}.wait{color:var(--y)}.bad{color:var(--r)}
+
+.modal{position:fixed;inset:0;background:#000b;display:grid;place-items:center;z-index:20;padding:16px}
+.modal.hidden{display:none}
+.card{width:min(420px,100%);max-height:90dvh;overflow:auto;background:#0d1218;border:1px solid #28313b;border-radius:9px;padding:22px;box-shadow:0 20px 70px #000d}
+.card h2{font-size:15px;font-weight:500;margin:0 0 8px}
+.card p{font-size:11px;color:var(--m);line-height:1.6;margin:0 0 14px}
+.field{width:100%;background:#080c11;border:1px solid #28313b;color:var(--t);outline:0;border-radius:5px;padding:10px;font:12px var(--f);margin-bottom:8px}
+.field:focus{border-color:#3f5262}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tab{flex:1;text-align:center;padding:7px;border:1px solid #27313c;border-radius:5px;color:#7f8b98;font-size:11px;cursor:pointer;background:transparent}
+.tab.active{color:var(--g);border-color:#345b3d;background:#102116}
+.formerr{color:var(--r);font-size:11px;min-height:14px;margin:-2px 0 8px}
+.hidden{display:none!important}
+
+@media(max-width:760px){
+  body{padding:0}
+  .app{width:100vw;height:100dvh;min-height:0;border:0;border-radius:0}
+  .right{display:none}
+  .title{display:none}
+  .chat{padding:15px 13px}
+  .typingline{padding:0 13px}
+  .bubble{max-width:88%}
+}
+</style>
+</head>
+<body>
+
+<div class="modal" id="authModal">
+  <div class="card">
+    <h2>Private Chat Room</h2>
+    <p>Sign in with your account, then create or join a room by name. Signaling goes through the server; messages, files and reactions travel directly peer-to-peer once connected.</p>
+    <div class="tabs">
+      <div class="tab active" id="tabLogin">log in</div>
+      <div class="tab" id="tabRegister">register</div>
+    </div>
+    <input class="field" id="authUser" placeholder="username" autocomplete="username" maxlength="20">
+    <input class="field" id="authPass" type="password" placeholder="password" autocomplete="current-password">
+    <div class="formerr" id="authErr"></div>
+    <button class="send" id="authBtn" style="width:100%">log in</button>
+  </div>
+</div>
+
+<div class="modal hidden" id="roomModal">
+  <div class="card">
+    <h2>Join a room</h2>
+    <p>Anyone who knows the room name and signs in can join. Room names: lowercase letters, digits, - and _.</p>
+    <input class="field" id="roomName" placeholder="room name" maxlength="64">
+    <div class="formerr" id="roomErr"></div>
+    <button class="send" id="roomBtn" style="width:100%">enter room</button>
+    <button class="btnlink" id="logoutBtn" style="margin-top:10px">log out</button>
+  </div>
+</div>
+
+<div class="app hidden" id="app">
+  <div class="bar">
+    <div class="dots"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
+    <div class="title" id="titleBar">private chat room</div>
+    <div class="actions"><span class="clock" id="clock">--:--</span><button class="btnlink" id="leaveBtn">leave</button></div>
+  </div>
+  <div class="work">
+    <aside class="side left">
+      <div class="st">ROOM</div><div class="room"># <span id="roomLabel"></span></div>
+      <div class="st" style="margin-top:15px">SIGNALING</div>
+      <div class="small" id="sigStatus">connecting…</div>
+      <div class="st" style="margin-top:15px">NETWORK</div>
+      <div class="small">direct WebRTC mesh · signaling relayed by a Cloudflare Worker (wss) · STUN only, no TURN</div>
+    </aside>
+    <main class="main">
+      <div class="chat" id="chat"></div>
+      <div class="typingline" id="typingLine"></div>
+      <form class="compose" id="form">
+        <div class="replybar hidden" id="replyBar">
+          <span class="replybar-text" id="replyBarText"></span>
+          <button type="button" class="replybar-cancel" id="replyBarCancel">✕</button>
+        </div>
+        <div class="composerow">
+          <span class="prompt">&gt;</span>
+          <input id="input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="type a message…" maxlength="2000">
+          <button type="button" class="action" id="attachBtn" title="send a file">📎</button>
+          <input type="file" id="fileInput" class="hidden">
+          <button class="send">send</button>
+        </div>
+      </form>
+    </main>
+    <aside class="side right">
+      <div class="st" id="ut">USERS · 1</div><div id="users"></div>
+    </aside>
+  </div>
+  <div class="status">
+    <span>PRIVATE CHAT <span id="sd" class="wait">● connecting</span></span>
+    <span id="stext"></span>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---- configure this to your deployed Worker ----
+  const WORKER_BASE = window.PCR_WORKER_BASE || "https://pcr-signaling.YOUR-SUBDOMAIN.workers.dev";
+  const WS_BASE = WORKER_BASE.replace(/^http/, "ws");
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const fmtBytes = (n) => n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(1) + " KB" : (n / 1048576).toFixed(1) + " MB";
+  const nowStr = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const uid = () => Math.random().toString(36).slice(2, 10);
+
+  const EMOJI = ["👍","❤️","😂","😮","😢","🔥"];
+  const MAX_FILE_BYTES = 20 * 1024 * 1024;
+  const CHUNK_SIZE = 12000; // base64 chars per chunk
+
+  const S = {
+    token: localStorage.getItem("pcr_token") || null,
+    username: localStorage.getItem("pcr_username") || null,
+    room: null,
+    ws: null,
+    myId: null,
+    peers: new Map(),        // id -> { username, pc, dc, connected }
+    messages: new Map(),     // mid -> { reactions: Map(emoji -> Set(username)) }
+    replyTo: null,
+    incoming: new Map(),     // xid -> {meta, chunks, row}
+    typingTimers: new Map(),
+  };
+
+  // ---------------- auth ----------------
+  let authMode = "login";
+  $("tabLogin").onclick = () => { authMode = "login"; $("tabLogin").classList.add("active"); $("tabRegister").classList.remove("active"); $("authBtn").textContent = "log in"; };
+  $("tabRegister").onclick = () => { authMode = "register"; $("tabRegister").classList.add("active"); $("tabLogin").classList.remove("active"); $("authBtn").textContent = "create account"; };
+
+  async function doAuth() {
+    const username = $("authUser").value.trim();
+    const password = $("authPass").value;
+    $("authErr").textContent = "";
+    if (!username || !password) { $("authErr").textContent = "enter a username and password"; return; }
+    try {
+      const res = await fetch(`${WORKER_BASE}/api/${authMode === "login" ? "login" : "register"}`, {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) { $("authErr").textContent = data.error || "something went wrong"; return; }
+      S.token = data.token; S.username = data.username;
+      localStorage.setItem("pcr_token", S.token);
+      localStorage.setItem("pcr_username", S.username);
+      $("authModal").classList.add("hidden");
+      $("roomModal").classList.remove("hidden");
+    } catch (e) {
+      $("authErr").textContent = "network error — is the worker reachable?";
+    }
+  }
+  $("authBtn").onclick = doAuth;
+  $("authPass").addEventListener("keydown", (e) => { if (e.key === "Enter") doAuth(); });
+
+  $("logoutBtn").onclick = () => {
+    localStorage.removeItem("pcr_token"); localStorage.removeItem("pcr_username");
+    S.token = null; S.username = null;
+    $("roomModal").classList.add("hidden"); $("authModal").classList.remove("hidden");
+  };
+
+  if (S.token && S.username) { $("authModal").classList.add("hidden"); $("roomModal").classList.remove("hidden"); }
+
+  // ---------------- room entry ----------------
+  $("roomBtn").onclick = () => {
+    const name = $("roomName").value.trim().toLowerCase();
+    $("roomErr").textContent = "";
+    if (!/^[a-z0-9_-]{1,64}$/.test(name)) { $("roomErr").textContent = "lowercase letters, digits, - and _ only"; return; }
+    S.room = name;
+    $("roomModal").classList.add("hidden");
+    $("app").classList.remove("hidden");
+    $("roomLabel").textContent = name;
+    $("titleBar").textContent = `private chat room — #${name}`;
+    connect();
+  };
+  $("roomName").addEventListener("keydown", (e) => { if (e.key === "Enter") $("roomBtn").click(); });
+
+  $("leaveBtn").onclick = () => location.reload();
+
+  // ---------------- signaling (WebSocket) ----------------
+  function connect() {
+    status("wait", "connecting to signaling…");
+    const ws = new WebSocket(`${WS_BASE}/ws?room=${encodeURIComponent(S.room)}&token=${encodeURIComponent(S.token)}`);
+    S.ws = ws;
+    ws.onopen = () => { $("sigStatus").textContent = "connected"; status("ok", "signaling connected — waiting for peers"); };
+    ws.onclose = () => { $("sigStatus").textContent = "disconnected"; status("bad", "signaling disconnected"); sysMsg("disconnected from signaling server"); };
+    ws.onerror = () => { status("bad", "signaling error"); };
+    ws.onmessage = (ev) => {
+      let m; try { m = JSON.parse(ev.data); } catch { return; }
+      if (m.type === "welcome") {
+        S.myId = m.id;
+        m.roster.forEach((p) => addPeer(p.id, p.username, S.myId < p.id));
+        renderUsers();
+      } else if (m.type === "peer-joined") {
+        sysMsg(`${m.username} joined`);
+        addPeer(m.id, m.username, S.myId < m.id);
+        renderUsers();
+      } else if (m.type === "peer-left") {
+        const p = S.peers.get(m.id);
+        if (p) { sysMsg(`${p.username} left`); try { p.pc.close(); } catch {} S.peers.delete(m.id); renderUsers(); }
+      } else if (m.type === "signal") {
+        handleSignal(m.from, m.kind, m.payload);
+      }
+    };
+  }
+
+  function sendSignal(to, kind, payload) {
+    if (S.ws && S.ws.readyState === WebSocket.OPEN) S.ws.send(JSON.stringify({ type: "signal", to, kind, payload }));
+  }
+
+  // ---------------- WebRTC mesh ----------------
+  function addPeer(id, username, initiator) {
+    if (S.peers.has(id)) return;
+    const pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+    const peer = { username, pc, dc: null, connected: false };
+    S.peers.set(id, peer);
+
+    pc.onicecandidate = (e) => { if (e.candidate) sendSignal(id, "ice", e.candidate); };
+    pc.onconnectionstatechange = () => { renderUsers(); if (pc.connectionState === "connected") status("ok", "connected to " + username); };
+
+    if (initiator) {
+      const dc = pc.createDataChannel("chat");
+      wireChannel(id, dc);
+      pc.onnegotiationneeded = async () => {
+        try {
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          sendSignal(id, "offer", pc.localDescription);
+        } catch (e) { sysMsg("offer failed: " + e.message, "err"); }
+      };
+    } else {
+      pc.ondatachannel = (e) => wireChannel(id, e.channel);
+    }
+    renderUsers();
+  }
+
+  async function handleSignal(fromId, kind, payload) {
+    const peer = S.peers.get(fromId);
+    if (!peer) return; // shouldn't happen — peer-joined always arrives first
+    const pc = peer.pc;
+    try {
+      if (kind === "offer") {
+        await pc.setRemoteDescription(payload);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        sendSignal(fromId, "answer", pc.localDescription);
+      } else if (kind === "answer") {
+        await pc.setRemoteDescription(payload);
+      } else if (kind === "ice") {
+        await pc.addIceCandidate(payload);
+      }
+    } catch (e) { sysMsg("signaling error with " + peer.username + ": " + e.message, "err"); }
+  }
+
+  function wireChannel(id, dc) {
+    const peer = S.peers.get(id);
+    peer.dc = dc;
+    dc.onopen = () => { peer.connected = true; renderUsers(); sysMsg(`direct connection established with ${peer.username}`); };
+    dc.onclose = () => { peer.connected = false; renderUsers(); };
+    dc.onmessage = (ev) => handleData(id, JSON.parse(ev.data));
+  }
+
+  function broadcast(obj) {
+    const raw = JSON.stringify(obj);
+    for (const peer of S.peers.values()) if (peer.dc && peer.dc.readyState === "open") peer.dc.send(raw);
+  }
+
+  function handleData(fromId, data) {
+    const peer = S.peers.get(fromId);
+    const nick = peer ? peer.username : "?";
+    if (data.type === "chat") renderMessage(data.mid, nick, data.text, false, data.replyTo);
+    else if (data.type === "reaction") applyReaction(data.mid, data.emoji, nick);
+    else if (data.type === "typing") showTyping(nick, data.on);
+    else if (data.type === "file-meta") startIncomingFile(data);
+    else if (data.type === "file-chunk") receiveChunk(data);
+    else if (data.type === "file-done") finishIncomingFile(data.xid);
+  }
+
+  // ---------------- chat UI ----------------
+  const chatEl = $("chat"), typingLine = $("typingLine");
+
+  function sysMsg(text, cls) {
+    const d = document.createElement("div");
+    d.className = cls === "err" ? "err" : "sys";
+    d.textContent = text;
+    chatEl.appendChild(d);
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }
+
+  function renderMessage(mid, nick, text, self, replyTo) {
+    const row = document.createElement("div");
+    row.className = "msg bubble-row" + (self ? " self" : "");
+    row.dataset.mid = mid;
+    const bubble = document.createElement("div"); bubble.className = "bubble";
+    let html = `<div class="bhead"><span class="bnick">${esc(nick)}</span></div>`;
+    if (replyTo && S.messages.has(replyTo.mid)) {
+      html += `<div class="replyq"><b>${esc(replyTo.nick)}</b> ${esc(replyTo.snippet)}</div>`;
+    }
+    html += `<div class="btext">${esc(text)}</div>`;
+    html += `<div class="bfoot"><button class="react-btn" data-mid="${mid}">react</button><span class="btime">${nowStr()}</span></div>`;
+    html += `<div class="picker hidden" id="picker-${mid}">${EMOJI.map((e) => `<span class="emoji-opt" data-emoji="${e}">${e}</span>`).join("")}</div>`;
+    html += `<div class="reactions" id="reactions-${mid}"></div>`;
+    bubble.innerHTML = html;
+    row.appendChild(bubble);
+    chatEl.appendChild(row);
+    chatEl.scrollTop = chatEl.scrollHeight;
+    S.messages.set(mid, { nick, text, reactions: new Map() });
+
+    bubble.querySelector(".react-btn").onclick = () => $("picker-" + mid).classList.toggle("hidden");
+    bubble.querySelectorAll(".emoji-opt").forEach((el) => el.onclick = () => {
+      sendReaction(mid, el.dataset.emoji);
+      $("picker-" + mid).classList.add("hidden");
+    });
+    row.ondblclick = () => setReply(mid, nick, text);
+  }
+
+  function sendReaction(mid, emoji) {
+    applyReaction(mid, emoji, S.username);
+    broadcast({ type: "reaction", mid, emoji });
+  }
+  function applyReaction(mid, emoji, who) {
+    const m = S.messages.get(mid); if (!m) return;
+    if (!m.reactions.has(emoji)) m.reactions.set(emoji, new Set());
+    const set = m.reactions.get(emoji);
+    if (set.has(who)) set.delete(who); else set.add(who);
+    const box = $("reactions-" + mid); if (!box) return;
+    box.innerHTML = "";
+    for (const [em, users] of m.reactions) {
+      if (users.size === 0) continue;
+      const pill = document.createElement("span");
+      pill.className = "reaction" + (users.has(S.username) ? " mine" : "");
+      pill.textContent = `${em} ${users.size}`;
+      pill.onclick = () => sendReaction(mid, em);
+      box.appendChild(pill);
+    }
+  }
+
+  function setReply(mid, nick, text) {
+    S.replyTo = { mid, nick, snippet: text.slice(0, 60) };
+    $("replyBar").classList.remove("hidden");
+    $("replyBarText").innerHTML = `replying to <b>${esc(nick)}</b>: ${esc(text.slice(0, 60))}`;
+  }
+  $("replyBarCancel").onclick = () => { S.replyTo = null; $("replyBar").classList.add("hidden"); };
+
+  // ---------------- compose ----------------
+  const form = $("form"), input = $("input");
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    const mid = uid();
+    const replyTo = S.replyTo;
+    renderMessage(mid, S.username, text, true, replyTo);
+    broadcast({ type: "chat", mid, text, replyTo });
+    input.value = "";
+    S.replyTo = null; $("replyBar").classList.add("hidden");
+    broadcast({ type: "typing", on: false });
+  });
+
+  let typingSelf = false, typingTimeout;
+  input.addEventListener("input", () => {
+    if (!typingSelf) { typingSelf = true; broadcast({ type: "typing", on: true }); }
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => { typingSelf = false; broadcast({ type: "typing", on: false }); }, 1500);
+  });
+
+  const typingState = new Map();
+  function showTyping(nick, on) {
+    if (on) typingState.set(nick, true); else typingState.delete(nick);
+    const names = [...typingState.keys()];
+    typingLine.textContent = names.length ? `${names.join(", ")} ${names.length > 1 ? "are" : "is"} typing…` : "";
+  }
+
+  // ---------------- file transfer ----------------
+  $("attachBtn").onclick = () => $("fileInput").click();
+  $("fileInput").addEventListener("change", () => {
+    const f = $("fileInput").files[0]; $("fileInput").value = "";
+    if (f) sendFile(f);
+  });
+
+  async function sendFile(file) {
+    if (file.size > MAX_FILE_BYTES) { sysMsg(`file too large (max ${fmtBytes(MAX_FILE_BYTES)})`, "err"); return; }
+    const xid = uid();
+    const buf = await file.arrayBuffer();
+    const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+    const total = Math.ceil(b64.length / CHUNK_SIZE);
+    const meta = { type: "file-meta", xid, name: file.name, size: file.size, mime: file.type, total };
+    broadcast(meta);
+    const row = fileRow(xid, S.username, file.name, file.size, true);
+    for (let i = 0; i < total; i++) {
+      broadcast({ type: "file-chunk", xid, seq: i, data: b64.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE) });
+      updateFileProgress(xid, Math.round(((i + 1) / total) * 100));
+      await new Promise((r) => setTimeout(r, 0)); // yield so the UI + backpressure can breathe
+    }
+    broadcast({ type: "file-done", xid });
+    finishFileRow(xid, URL.createObjectURL(file), file.type);
+  }
+
+  function startIncomingFile(meta) {
+    S.incoming.set(meta.xid, { meta, chunks: new Array(meta.total) });
+    fileRow(meta.xid, "peer", meta.name, meta.size, false);
+  }
+  function receiveChunk(d) {
+    const f = S.incoming.get(d.xid); if (!f) return;
+    f.chunks[d.seq] = d.data;
+    const got = f.chunks.filter(Boolean).length;
+    updateFileProgress(d.xid, Math.round((got / f.meta.total) * 100));
+  }
+  function finishIncomingFile(xid) {
+    const f = S.incoming.get(xid); if (!f) return;
+    const b64 = f.chunks.join("");
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const blob = new Blob([bytes], { type: f.meta.mime || "application/octet-stream" });
+    finishFileRow(xid, URL.createObjectURL(blob), f.meta.mime);
+    S.incoming.delete(xid);
+  }
+
+  function fileRow(xid, nick, name, size, self) {
+    const row = document.createElement("div");
+    row.className = "msg bubble-row" + (self ? " self" : "");
+    row.id = "xfer-" + xid;
+    const bubble = document.createElement("div"); bubble.className = "bubble";
+    bubble.innerHTML = `<div class="bhead"><span class="bnick">${esc(nick)}</span></div>
+      <div class="xfer"><div class="xferstate">${esc(name)} · ${fmtBytes(size)}</div>
+      <div class="xferbar"><div class="xferbarfill" id="fill-${xid}" style="width:0%"></div></div></div>`;
+    row.appendChild(bubble);
+    chatEl.appendChild(row); chatEl.scrollTop = chatEl.scrollHeight;
+    return row;
+  }
+  function updateFileProgress(xid, pct) { const el = $("fill-" + xid); if (el) el.style.width = pct + "%"; }
+  function finishFileRow(xid, url, mime) {
+    const row = $("xfer-" + xid); if (!row) return;
+    const bubble = row.querySelector(".bubble");
+    const xfer = bubble.querySelector(".xfer");
+    if (mime && mime.startsWith("image/")) {
+      xfer.insertAdjacentHTML("beforeend", `<img class="att-img" src="${url}">`);
+    } else {
+      xfer.insertAdjacentHTML("beforeend", `<a class="att-file" href="${url}" download>⬇ download</a>`);
+    }
+  }
+
+  // ---------------- users panel ----------------
+  function renderUsers() {
+    const box = $("users");
+    box.innerHTML = `<div class="u me">● ${esc(S.username)} (you)</div>`;
+    for (const [, p] of S.peers) {
+      const state = p.connected ? "on" : (p.pc.connectionState === "connecting" ? "connecting" : "off");
+      const label = p.connected ? "connected" : p.pc.connectionState;
+      box.innerHTML += `<div class="u">${esc(p.username)} <span class="tag ${state}">${label}</span></div>`;
+    }
+    $("ut").textContent = "USERS · " + (S.peers.size + 1);
+  }
+
+  function status(kind, text) {
+    $("sd").className = kind; $("sd").textContent = "● " + (kind === "ok" ? "connected" : kind === "bad" ? "error" : "connecting");
+    $("stext").textContent = text;
+  }
+
+  setInterval(() => { $("clock").textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }); }, 1000);
+})();
+</script>
+</body>
+</html>
