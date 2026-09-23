@@ -185,7 +185,7 @@ body{display:grid;place-items:center;padding:20px;overflow:hidden}
   "use strict";
 
   // ---- configure this to your deployed Worker ----
-  const WORKER_BASE = window.PCR_WORKER_BASE || "https://pcr-signaling.YOUR-SUBDOMAIN.workers.dev";
+  const WORKER_BASE = window.PCR_WORKER_BASE || "https://pcr-signaling.portablevscode.workers.dev/";
   const POLL_MS = 2000; // how often we ask the worker for new signals/roster
 
   const $ = (id) => document.getElementById(id);
